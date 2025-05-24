@@ -2,11 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-License-Identifier: MIT
 
-use std::{ptr::null_mut, thread, time::Duration};
+use std::{fs::File, io::Read, path::Path, ptr::null_mut, thread, time::Duration};
 
 use tray_icon::{
-    menu::{Menu, MenuEvent, MenuItem}, 
-    MouseButton, TrayIcon, TrayIconBuilder, TrayIconEvent
+    menu::{Menu, MenuEvent, MenuItem}, Icon, MouseButton, TrayIcon, TrayIconBuilder, TrayIconEvent
 };
 use winapi::{shared::winerror::S_OK, um::{shellapi::{SHEmptyRecycleBinW, SHQueryRecycleBinW, ShellExecuteW}, winnt::{KEY_READ, KEY_SET_VALUE}, winuser::{HWND_DESKTOP, SW_SHOWNORMAL}}};
 use winit::{
@@ -34,7 +33,16 @@ impl Application {
 
     fn new_tray_icon() -> TrayIcon {
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/trash-bin.ico");
-        let icon = load_icon(std::path::Path::new(path));
+        // let icon = load_icon(std::path::Path::new(path));
+
+        // Встраиваем уже подготовленные RGBA-данные
+        let rgba_data = include_bytes!("ds.rgba");
+
+        // Проверяем, что длина соответствует 32x32 RGBA
+        assert_eq!(rgba_data.len(), 48 * 48 * 4);
+
+        // Создаём иконку
+        let icon = Icon::from_rgba(rgba_data.to_vec(), 48, 48).expect("Не удалось создать иконку");
 
         TrayIconBuilder::new()
             .with_menu(Box::new(Self::new_tray_menu()))
@@ -179,22 +187,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn load_icon(path: &std::path::Path) -> tray_icon::Icon {
-    use ico::IconDir;
-    use std::fs::File;
+// Простая реализация загрузки иконки .ico (просто берёт первое изображение)
+// fn load_icon<P: AsRef<Path>>(path: P) -> Icon {
+//     let mut file = File::open(path).expect("Не удалось открыть файл");
+//     let mut buffer = Vec::new();
+//     file.read_to_end(&mut buffer).expect("Не удалось прочитать файл");
 
-    let file = File::open(path).expect("Не могу открыть .ico файл");
-    let icon_dir = IconDir::read(file).expect("Не могу прочитать .ico файл");
+//     // Пропускаем заголовок ICO файла (6 байт), переходим к таблице изображений
+//     let entry_offset = u32::from_le_bytes([
+//         buffer[4], buffer[5], 0, 0,
+//     ]) as usize;
 
-    // Берём первый иконент
-    let icon = icon_dir.entries().first().expect("ICO не содержит иконок");
-    let rgba = icon.data().to_vec();
+//     // Прыгаем на начало первого изображения
+//     let image_data = &buffer[entry_offset..];
 
-    let width = icon.width() + 1;
-    let height = icon.height() + 1;
+//     // Предполагаем, что изображение 32x32 и имеет RGBA формат (не всегда верно!)
+//     const width: u32 = 32;
+//     const height: u32 = 32;
 
-    tray_icon::Icon::from_rgba(rgba, width, height).expect("Ошибка создания иконки")
-}
+//     // Берём первые 32x32x4 байт как RGBA
+//     let rgba: Vec<u8> = image_data[..(width * height * 4) as usize]
+//         .chunks_exact(4)
+//         .flat_map(|p| [p[2], p[1], p[0], p[3]]) // Bgra → Rgba
+//         .collect();
+
+//     Icon::from_rgba(rgba, width, height).expect("Не удалось создать иконку")
+// }
 
 // Функция открытия корзины Windows
 fn open_recycle_bin() {
