@@ -2,18 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-License-Identifier: MIT
 
-#![allow(unused)]
-
-use std::ptr::null_mut;
+use std::{ptr::null_mut, thread, time::Duration};
 
 use tray_icon::{
-    menu::{AboutMetadata, Menu, MenuEvent, MenuItem, PredefinedMenuItem}, MouseButton, TrayIcon, TrayIconBuilder, TrayIconEvent, TrayIconEventReceiver
+    menu::{Menu, MenuEvent, MenuItem}, 
+    MouseButton, TrayIcon, TrayIconBuilder, TrayIconEvent
 };
-use winapi::um::{shellapi::ShellExecuteW, winuser::SW_SHOWNORMAL};
+use winapi::{shared::winerror::S_OK, um::{shellapi::{SHEmptyRecycleBinW, SHQueryRecycleBinW, ShellExecuteW}, winuser::{HWND_DESKTOP, SW_SHOWNORMAL}}};
 use winit::{
     application::ApplicationHandler,
-    event::Event,
-    event_loop::{ControlFlow, EventLoop, EventLoopBuilder},
+    event_loop::EventLoop,
 };
 use wio::wide::ToWide;
 
@@ -21,6 +19,7 @@ use wio::wide::ToWide;
 enum UserEvent {
     TrayIconEvent(tray_icon::TrayIconEvent),
     MenuEvent(tray_icon::menu::MenuEvent),
+    UpdateTooltip(String), // Добавлено новое событие для обновления тултипа
 }
 
 struct Application {
@@ -33,7 +32,7 @@ impl Application {
     }
 
     fn new_tray_icon() -> TrayIcon {
-        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/ic.ico");
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/trash-bin.ico");
         let icon = load_icon(std::path::Path::new(path));
 
         TrayIconBuilder::new()
@@ -48,14 +47,16 @@ impl Application {
 
     fn new_tray_menu() -> Menu {
         let menu = Menu::new();
+
         let item1 = MenuItem::new("Открыть корзину", true, None);
-        if let Err(err) = menu.append(&item1) {
-            println!("{err:?}");
-        }
+        menu.append(&item1).unwrap();
+
         let item_close = MenuItem::new("Выйти", true, None);
-        if let Err(err) = menu.append(&item_close) {
-            println!("{err:?}");
-        }
+        menu.append(&item_close).unwrap();
+
+        let clear = MenuItem::new("Отчистить корзину", true, None);
+        menu.append(&clear).unwrap();
+
         menu
     }
 }
@@ -97,29 +98,39 @@ impl ApplicationHandler<UserEvent> for Application {
     }
 
     fn user_event(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop, event: UserEvent) {
-        // println!("залупа {event:?}");
         match event {
             UserEvent::TrayIconEvent(tray_icon_event) => {
                 match tray_icon_event {
-                    TrayIconEvent::Click { id, position, rect, button, button_state } => {
-                        if button == MouseButton::Left {
-                            println!("Клик!");
-                            open_recycle_bin();
-                        }
+                    TrayIconEvent::Click { button, .. } if button == MouseButton::Left => {
+                        open_recycle_bin();
                     }
-                    TrayIconEvent::Leave { id, position, rect } => {},
-                    _ => {},
+                    _ => {}
                 }
             },
             UserEvent::MenuEvent(menu_event) => {
-                if menu_event.id.0 == "1001" {
-                    // Открыть корзину
-                    println!("Открыть корзину");
-                } 
-                else if menu_event.id.0 == "1002" {
-                    println!("Выйти из приложения");
+                match menu_event.id.0.as_str() {
+                    "1001" => open_recycle_bin(),
+                    "1002" => std::process::exit(0),
+                    "1003" => {
+                        if empty_recycle_bin() {
+                            println!("Корзина очищена");
+
+                            // Можно обновить тултип
+                            if let Some(tray) = &self.tray_icon {
+                                tray.set_tooltip(Some("Корзина пуста")).unwrap();
+                            }
+                        } else {
+                            println!("Ошибка при очистке корзины");
+                        }
+                    }
+                    _ => {}
                 }
             },
+            UserEvent::UpdateTooltip(tip) => { // Обработка нового события
+                if let Some(tray) = &self.tray_icon {
+                    tray.set_tooltip(Some(&tip)).unwrap();
+                }
+            }
         }
     }
 }
@@ -127,36 +138,34 @@ impl ApplicationHandler<UserEvent> for Application {
 fn main() {
     let event_loop = EventLoop::<UserEvent>::with_user_event().build().unwrap();
 
-    // set a tray event handler that forwards the event and wakes up the event loop
+    // Регистрируем обработчики событий
     let proxy = event_loop.create_proxy();
     TrayIconEvent::set_event_handler(Some(move |event| {
-        proxy.send_event(UserEvent::TrayIconEvent(event));
+        proxy.send_event(UserEvent::TrayIconEvent(event)).unwrap();
     }));
+    
     let proxy = event_loop.create_proxy();
     MenuEvent::set_event_handler(Some(move |event| {
-        proxy.send_event(UserEvent::MenuEvent(event));
+        proxy.send_event(UserEvent::MenuEvent(event)).unwrap();
     }));
 
     let mut app = Application::new();
 
-    let menu_channel = MenuEvent::receiver();
-    let tray_channel = TrayIconEvent::receiver();
-
-    // Since winit doesn't use gtk on Linux, and we need gtk for
-    // the tray icon to show up, we need to spawn a thread
-    // where we initialize gtk and create the tray_icon
-    #[cfg(target_os = "linux")]
-    std::thread::spawn(|| {
-        gtk::init().unwrap();
-
-        let _tray_icon = Application::new_tray_icon();
-
-        gtk::main();
+    // Запускаем поток для обновления тултипа
+    let proxy = event_loop.create_proxy();
+    thread::spawn(move || {
+        loop {
+            let size = get_recycle_bin_size();
+            let tip = format!("Корзина: {:.2} МБ", size as f64 / 1_000_000.0);
+            
+            // Отправляем событие в основной поток
+            proxy.send_event(UserEvent::UpdateTooltip(tip)).unwrap();
+            
+            thread::sleep(Duration::from_secs(10));
+        }
     });
 
-    if let Err(err) = event_loop.run_app(&mut app) {
-        println!("Error: {:?}", err);
-    }
+    event_loop.run_app(&mut app).unwrap();
 }
 
 fn load_icon(path: &std::path::Path) -> tray_icon::Icon {
@@ -184,5 +193,35 @@ fn open_recycle_bin() {
             null_mut(),
             SW_SHOWNORMAL,
         );
+    }
+}
+
+fn get_recycle_bin_size() -> u64 {
+    unsafe {
+        let mut info = winapi::um::shellapi::SHQUERYRBINFO {
+            cbSize: std::mem::size_of::<winapi::um::shellapi::SHQUERYRBINFO>() as u32,
+            i64Size: 0,
+            i64NumItems: 0,
+        };
+
+        let result = SHQueryRecycleBinW(null_mut(), &mut info);
+            
+        if result == S_OK {
+            return info.i64Size.try_into().unwrap();
+        } else {
+            println!("Ошибка при запросе размера корзины: {}", result);
+            return 0;
+        }
+    }
+}
+
+fn empty_recycle_bin() -> bool {
+    unsafe {
+        let result = SHEmptyRecycleBinW(
+            HWND_DESKTOP,
+            null_mut(),
+            0
+        );
+        result == S_OK
     }
 }
