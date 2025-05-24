@@ -8,11 +8,12 @@ use tray_icon::{
     menu::{Menu, MenuEvent, MenuItem}, 
     MouseButton, TrayIcon, TrayIconBuilder, TrayIconEvent
 };
-use winapi::{shared::winerror::S_OK, um::{shellapi::{SHEmptyRecycleBinW, SHQueryRecycleBinW, ShellExecuteW}, winuser::{HWND_DESKTOP, SW_SHOWNORMAL}}};
+use winapi::{shared::winerror::S_OK, um::{shellapi::{SHEmptyRecycleBinW, SHQueryRecycleBinW, ShellExecuteW}, winnt::{KEY_READ, KEY_SET_VALUE}, winuser::{HWND_DESKTOP, SW_SHOWNORMAL}}};
 use winit::{
     application::ApplicationHandler,
     event_loop::EventLoop,
 };
+use winreg::{enums::HKEY_CURRENT_USER, RegKey};
 use wio::wide::ToWide;
 
 #[derive(Debug)]
@@ -51,11 +52,11 @@ impl Application {
         let item1 = MenuItem::new("Открыть корзину", true, None);
         menu.append(&item1).unwrap();
 
-        let item_close = MenuItem::new("Выйти", true, None);
-        menu.append(&item_close).unwrap();
-
         let clear = MenuItem::new("Отчистить корзину", true, None);
         menu.append(&clear).unwrap();
+
+        let item_close = MenuItem::new("Выйти", true, None);
+        menu.append(&item_close).unwrap();
 
         menu
     }
@@ -110,8 +111,8 @@ impl ApplicationHandler<UserEvent> for Application {
             UserEvent::MenuEvent(menu_event) => {
                 match menu_event.id.0.as_str() {
                     "1001" => open_recycle_bin(),
-                    "1002" => std::process::exit(0),
-                    "1003" => {
+                    "1003" => std::process::exit(0),
+                    "1002" => {
                         if empty_recycle_bin() {
                             println!("Корзина очищена");
 
@@ -135,7 +136,15 @@ impl ApplicationHandler<UserEvent> for Application {
     }
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Проверяем, есть ли уже в автозагрузке
+    if !check_startup()? {
+        println!("Приложение не в автозагрузке. Добавляем...");
+        add_to_startup()?;
+    } else {
+        println!("Приложение уже в автозагрузке.");
+    }
+
     let event_loop = EventLoop::<UserEvent>::with_user_event().build().unwrap();
 
     // Регистрируем обработчики событий
@@ -166,18 +175,25 @@ fn main() {
     });
 
     event_loop.run_app(&mut app).unwrap();
+
+    Ok(())
 }
 
 fn load_icon(path: &std::path::Path) -> tray_icon::Icon {
-    let (icon_rgba, icon_width, icon_height) = {
-        let image = image::open(path)
-            .expect("Failed to open icon path")
-            .into_rgba8();
-        let (width, height) = image.dimensions();
-        let rgba = image.into_raw();
-        (rgba, width, height)
-    };
-    tray_icon::Icon::from_rgba(icon_rgba, icon_width, icon_height).expect("Failed to open icon")
+    use ico::IconDir;
+    use std::fs::File;
+
+    let file = File::open(path).expect("Не могу открыть .ico файл");
+    let icon_dir = IconDir::read(file).expect("Не могу прочитать .ico файл");
+
+    // Берём первый иконент
+    let icon = icon_dir.entries().first().expect("ICO не содержит иконок");
+    let rgba = icon.data().to_vec();
+
+    let width = icon.width() + 1;
+    let height = icon.height() + 1;
+
+    tray_icon::Icon::from_rgba(rgba, width, height).expect("Ошибка создания иконки")
 }
 
 // Функция открытия корзины Windows
@@ -224,4 +240,37 @@ fn empty_recycle_bin() -> bool {
         );
         result == S_OK
     }
+}
+
+fn add_to_startup() -> Result<(), Box<dyn std::error::Error>> {
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    let run_key = hkcu.open_subkey_with_flags(
+        "Software\\Microsoft\\Windows\\CurrentVersion\\Run", 
+        KEY_SET_VALUE,
+    )?;
+
+    let exe_path = std::env::current_exe()?;
+    let path_str = exe_path.to_str().ok_or("Невозможно преобразовать путь")?;
+
+    run_key.set_value("minibin", &format!("\"{}\"", path_str))?;
+    println!("Приложение добавлено в автозагрузку.");
+
+    Ok(())
+}
+
+fn check_startup() -> Result<bool, Box<dyn std::error::Error>> {
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    let run_key = hkcu.open_subkey_with_flags(
+        "Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+        KEY_READ,
+    )?;
+
+    let result: Result<String, _> = run_key.get_value("minibin");
+    if let Ok(path) = result {
+        let current_exe = std::env::current_exe()?;
+        let current_path = current_exe.to_str().ok_or("Ошибка пути")?;
+        return Ok(path.contains(current_path));
+    }
+
+    Ok(false)
 }

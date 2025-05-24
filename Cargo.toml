@@ -3,13 +3,18 @@ name = "minibin"
 version = "0.1.0"
 edition = "2024"
 
+[profile.release]
+opt-level = 'z'        # максимальная оптимизация по размеру
+lto = true             # Link Time Optimization
+codegen-units = 1      # уменьшает размер за счёт времени сборки
+panic = 'abort'        # отказ от стандартного обработчика паник
+incremental = false    # отключает инкрементальную сборку
+strip = "symbols" # или "debuginfo" для минимального strip
+
 [dependencies]
 winapi = { version = "0.3.9", features = ["shellapi", "winerror", "winuser"] }
 wio = "0.2.2"
 tray-icon = "0.20.1"
-winit = "0.30"
-image = "0.25"
+winit = "0.30.11"
+ico = "0.4"
 winreg = "0.55.0"
-
-[build-dependencies]
-embed-resource = "3"
