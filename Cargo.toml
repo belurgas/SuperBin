@@ -12,7 +12,7 @@ incremental = false    # отключает инкрементальную сб�
 strip = "symbols" # или "debuginfo" для минимального strip
 
 [dependencies]
-winapi = { version = "0.3.9", features = ["shellapi", "winerror", "winuser"] }
+winapi = { version = "0.3.9", features = ["shellapi", "winerror", "winuser", "wincon"] }
 wio = "0.2.2"
 tray-icon = "0.20.1"
 winit = "0.30.11"
