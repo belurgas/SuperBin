@@ -1,11 +1,11 @@
 #![windows_subsystem = "windows"]
 
-use std::{fs::File, io::Read, path::Path, ptr::null_mut, thread, time::Duration};
+use std::{ptr::null_mut, thread, time::Duration};
 
 use tray_icon::{
     menu::{Menu, MenuEvent, MenuItem}, Icon, MouseButton, TrayIcon, TrayIconBuilder, TrayIconEvent
 };
-use winapi::{shared::winerror::S_OK, um::{shellapi::{SHEmptyRecycleBinW, SHQueryRecycleBinW, ShellExecuteW}, wincon::GetConsoleWindow, winnt::{KEY_READ, KEY_SET_VALUE}, winuser::{ShowWindow, HWND_DESKTOP, SW_HIDE, SW_SHOWNORMAL}}};
+use winapi::{shared::winerror::S_OK, um::{shellapi::{SHEmptyRecycleBinW, SHQueryRecycleBinW, ShellExecuteW}, winnt::{KEY_READ, KEY_SET_VALUE}, winuser::{HWND_DESKTOP, SW_SHOWNORMAL}}};
 use winit::{
     application::ApplicationHandler,
     event_loop::EventLoop,
@@ -30,13 +30,10 @@ impl Application {
     }
 
     fn new_tray_icon() -> TrayIcon {
-        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/trash-bin.ico");
-        // let icon = load_icon(std::path::Path::new(path));
-
         // Встраиваем уже подготовленные RGBA-данные
         let rgba_data = include_bytes!("ds.rgba");
 
-        // Проверяем, что длина соответствует 32x32 RGBA
+        // Проверяем, что длина соответствует 48x48 RGBA
         assert_eq!(rgba_data.len(), 48 * 48 * 4);
 
         // Создаём иконку
@@ -84,22 +81,10 @@ impl ApplicationHandler<UserEvent> for Application {
         _event_loop: &winit::event_loop::ActiveEventLoop,
         cause: winit::event::StartCause,
     ) {
-        // We create the icon once the event loop is actually running
-        // to prevent issues like https://github.com/tauri-apps/tray-icon/issues/90
         if winit::event::StartCause::Init == cause {
             #[cfg(not(target_os = "linux"))]
             {
                 self.tray_icon = Some(Self::new_tray_icon());
-            }
-
-            // We have to request a redraw here to have the icon actually show up.
-            // Winit only exposes a redraw method on the Window so we use core-foundation directly.
-            #[cfg(target_os = "macos")]
-            unsafe {
-                use objc2_core_foundation::{CFRunLoopGetMain, CFRunLoopWakeUp};
-
-                let rl = CFRunLoopGetMain().unwrap();
-                CFRunLoopWakeUp(&rl);
             }
         }
     }
@@ -142,18 +127,8 @@ impl ApplicationHandler<UserEvent> for Application {
     }
 }
 
-// fn hide_console_window() {
-//     unsafe {
-//         let window = GetConsoleWindow();
-//         if !window.is_null() {
-//             ShowWindow(window, SW_HIDE);
-//         }
-//     }
-// }
-
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // hide_console_window();
     // Проверяем, есть ли уже в автозагрузке
     if !check_startup()? {
         println!("Приложение не в автозагрузке. Добавляем...");
