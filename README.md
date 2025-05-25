@@ -43,3 +43,11 @@
 - [ ]  Регулярная проверка системных файлов, на не нужные файлы
 
 - [ ]  Страница кроневого удаления приложений, включая системные
+
+
+
+# Release
+
+**Скачать можно тут** - [Release v0.1.0-beta ]([Releases · belurgas/SuperBin · GitHub](https://github.com/belurgas/SuperBin/releases))
+
+
