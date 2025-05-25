@@ -1,7 +1,11 @@
 [package]
-name = "minibin"
+name = "superbin"
 version = "0.1.0"
+authors = ["Terrax Development"]
+description = "Мощная утилита по оптимизации работы с системой"
 edition = "2024"
+license = "MIT"    # Укажите лицензию (MIT/Apache-2.0 и т.д.)
+repository = "https://github.com/belurgas/SuperBin"
 
 [profile.release]
 opt-level = 'z'        # максимальная оптимизация по размеру
@@ -18,3 +22,6 @@ tray-icon = "0.20.1"
 winit = "0.30.11"
 ico = "0.4"
 winreg = "0.55.0"
+
+[build-dependencies]
+winres = "0.1"
