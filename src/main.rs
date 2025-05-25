@@ -1,13 +1,11 @@
-// Copyright 2022-2022 Tauri Programme within The Commons Conservancy
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-License-Identifier: MIT
+#![windows_subsystem = "windows"]
 
 use std::{fs::File, io::Read, path::Path, ptr::null_mut, thread, time::Duration};
 
 use tray_icon::{
     menu::{Menu, MenuEvent, MenuItem}, Icon, MouseButton, TrayIcon, TrayIconBuilder, TrayIconEvent
 };
-use winapi::{shared::winerror::S_OK, um::{shellapi::{SHEmptyRecycleBinW, SHQueryRecycleBinW, ShellExecuteW}, winnt::{KEY_READ, KEY_SET_VALUE}, winuser::{HWND_DESKTOP, SW_SHOWNORMAL}}};
+use winapi::{shared::winerror::S_OK, um::{shellapi::{SHEmptyRecycleBinW, SHQueryRecycleBinW, ShellExecuteW}, wincon::GetConsoleWindow, winnt::{KEY_READ, KEY_SET_VALUE}, winuser::{ShowWindow, HWND_DESKTOP, SW_HIDE, SW_SHOWNORMAL}}};
 use winit::{
     application::ApplicationHandler,
     event_loop::EventLoop,
@@ -144,7 +142,18 @@ impl ApplicationHandler<UserEvent> for Application {
     }
 }
 
+// fn hide_console_window() {
+//     unsafe {
+//         let window = GetConsoleWindow();
+//         if !window.is_null() {
+//             ShowWindow(window, SW_HIDE);
+//         }
+//     }
+// }
+
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // hide_console_window();
     // Проверяем, есть ли уже в автозагрузке
     if !check_startup()? {
         println!("Приложение не в автозагрузке. Добавляем...");
