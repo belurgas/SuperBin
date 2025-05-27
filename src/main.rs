@@ -52,14 +52,14 @@ impl Application {
     fn new_tray_menu() -> Menu {
         let menu = Menu::new();
 
+        let item_close = MenuItem::new("Выйти", true, None);
+        menu.append(&item_close).unwrap();
+
         let item1 = MenuItem::new("Открыть корзину", true, None);
         menu.append(&item1).unwrap();
 
         let clear = MenuItem::new("Отчистить корзину", true, None);
         menu.append(&clear).unwrap();
-
-        let item_close = MenuItem::new("Выйти", true, None);
-        menu.append(&item_close).unwrap();
 
         menu
     }
@@ -101,9 +101,9 @@ impl ApplicationHandler<UserEvent> for Application {
             },
             UserEvent::MenuEvent(menu_event) => {
                 match menu_event.id.0.as_str() {
-                    "1001" => open_recycle_bin(),
-                    "1003" => std::process::exit(0),
-                    "1002" => {
+                    "1002" => open_recycle_bin(),
+                    "1001" => std::process::exit(0),
+                    "1003" => {
                         if empty_recycle_bin() {
                             println!("Корзина очищена");
 
