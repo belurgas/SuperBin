@@ -36,6 +36,6 @@
 
 # Release
 
-**Скачать можно тут** - [Release v0.1.0-beta ](https://github.com/belurgas/SuperBin/releases)
+**Скачать можно тут** - [Release v0.1.0-beta ](https://github.com/belurgas/SuperBin/releases/tag/app-v0.1.0)
 
 
