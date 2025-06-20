@@ -10,4 +10,5 @@ export const TABS: Tab[] = [
     { id: 'cleanup', name: 'Smart Cleanup', icon: '🧹' },
     { id: 'recycle', name: 'Recycle Settings', icon: '🗑️' },
     { id: 'analytics', name: 'Disk Analytics', icon: '📈' },
+    { id: 'settings', name: "Settings", icon: '⚙️'}
 ]
