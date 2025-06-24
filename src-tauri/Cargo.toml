@@ -18,7 +18,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["tray-icon"] }
+tauri = "2"
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -32,6 +32,8 @@ tauri-plugin-log = "2"
 tauri-plugin-os = "2"
 log = "0.4.27"
 
+
+
 [target.'cfg(target_os = "windows")'.dependencies]
 [dependencies.windows]
 version = "0.61"
@@ -42,3 +44,7 @@ features = [
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-positioner = "2"
+
+[features]
+default = []
+tray-icon = ["tauri/tray-icon"]
