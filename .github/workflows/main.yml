@@ -50,6 +50,7 @@ jobs:
 
       - name: Get version from package.json
         id: get_version
+        shell: bash
         run: |
           VERSION=$(node get-version.cjs)
           echo "VERSION=$VERSION" >> $GITHUB_ENV
