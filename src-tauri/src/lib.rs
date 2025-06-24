@@ -36,7 +36,7 @@ fn system_info() -> (String, u64, u64) {
         (
             platform.to_string(),
             sys.total_memory(),
-            sys.total_swap(),
+            sys.used_memory(),
         )
     };
     return data;

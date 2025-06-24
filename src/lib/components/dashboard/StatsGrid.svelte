@@ -15,7 +15,6 @@
     let total_memory = $state<number>(0);
 
     listen('memory-update', (event) => {
-
         let pl: any = event.payload;
         used_memory = Math.round(pl / 1024 / 1024 / 1024 * 100) / 100;
     });
@@ -26,6 +25,7 @@
             const systemInfo: [string, number, number] = await invoke("system_info");
             console.log("System info in dashboard: ", systemInfo);
             total_memory = Math.round(systemInfo[1] / 1024 / 1024 / 1024);
+            used_memory = Math.round(systemInfo[2] / 1024 / 1024 / 1024 * 100) / 100;
         } catch (error) {
             console.error("Failed to fetch system info:", error);
             throw error;
