@@ -13,35 +13,41 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        os: [macos-latest, ubuntu-22.04, windows-latest]
+        target: 
+          - aarch64-apple-darwin
+          - x86_64-apple-darwin
+          - linux-x86_64
+          - windows-x86_64
         include:
-          - platform: "macos-latest"
-            args: "--target aarch64-apple-darwin"
-          - platform: "macos-latest"
-            args: "--target x86_64-apple-darwin"
-          - platform: "ubuntu-22.04"
-            args: ""
-          - platform: "windows-latest"
-            args: ""
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: macos-latest
+            target: x86_64-apple-darwin
+          - os: ubuntu-22.04
+            target: linux-x86_64
+          - os: windows-latest
+            target: windows-x86_64
 
-    runs-on: ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
     steps:
-      - name: Checkout code for current branch
+      - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
+          yarn-version: v1.x
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          toolchain: stable
+          targets: ${{ matrix.os == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Install dependencies (Ubuntu only)
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.os == 'ubuntu-22.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
@@ -51,18 +57,20 @@ jobs:
 
       - name: Extract version from package.json
         id: get_version
+        shell: pwsh
+        if: matrix.os == 'windows-latest'
         run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            # Для Windows
-            FOR /F "tokens=*" %%a in ('node -p "require(\"./package.json\").version"') DO SET version=%%a
-            echo version=%version% >> %GITHUB_OUTPUT%
-          else
-            # Для Linux/macOS
-            echo "version=$(node -p 'require(\"./package.json\").version')" >> $GITHUB_OUTPUT
-          fi
+          $version = node -p "require('./package.json').version"
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Extract version (Linux/macOS)
+        id: get_version
+        if: matrix.os != 'windows-latest'
+        run: |
+          echo "version=$(node -p 'require(\"./package.json\").version')" >> $GITHUB_OUTPUT
 
       - name: Build and publish Tauri app
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -71,4 +79,4 @@ jobs:
           releaseBody: "See the assets to download this version and install."
           releaseDraft: true
           prerelease: false
-          args: ${{ matrix.args }}
+          args: "--target ${{ matrix.target }}"
