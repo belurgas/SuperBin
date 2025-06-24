@@ -32,6 +32,8 @@ fn get_disks_info() -> Vec<(String, String, u64, u64)> {
 fn get_system_info() -> String {
     let mut sys = System::new_all();
     sys.refresh_all();
+    let platform = tauri_plugin_os::platform();
+    log::info!("Platform: {}", platform);
 
     let data = format!(
         "CPU: {}\nRAM: {}/{} GB",
