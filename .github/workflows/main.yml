@@ -59,3 +59,78 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
+      - name: Archive artifacts for upload
+        run: |
+          mkdir -p artifacts
+          cp target/release/bundle/**/* artifacts/
+          
+  create-release:
+    needs: publish-tauri
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get version from build job
+        id: get_info
+        run: echo "version=${{ needs.build-tauri.outputs.version }}" >> $GITHUB_OUTPUT
+
+      - name: Create draft release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: SuperBin-v${{ steps.get_info.outputs.version }}
+          release_name: SuperBin v${{ steps.get_info.outputs.version }}
+          body: |
+            ## What's new in this release
+
+            - New features
+            - Bug fixes
+            - Performance improvements
+
+            See the assets below to download and install.
+          draft: true
+          prerelease: false
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: artifacts
+          path: ./releases
+
+      - name: Upload macOS x86_64 binary
+        if: exists('releases/artifacts/SuperBin-x86_64-apple-darwin.dmg')
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./releases/artifacts/SuperBin-x86_64-apple-darwin.dmg
+          asset_name: SuperBin-macOS-x86_64.dmg
+          asset_content_type: application/octet-stream
+
+      - name: Upload macOS aarch64 binary
+        if: exists('releases/artifacts/SuperBin-aarch64-apple-darwin.dmg')
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./releases/artifacts/SuperBin-aarch64-apple-darwin.dmg
+          asset_name: SuperBin-macOS-arm64.dmg
+          asset_content_type: application/octet-stream
+
+      - name: Upload Windows binary
+        if: exists('releases/artifacts/SuperBin-x86_64-pc-windows-msvc.exe')
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./releases/artifacts/SuperBin-x86_64-pc-windows-msvc.exe
+          asset_name: SuperBin-Windows-x64.exe
+          asset_content_type: application/octet-stream
+
+      - name: Upload Linux binary
+        if: exists('releases/artifacts/SuperBin-x86_64-unknown-linux-gnu.deb')
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./releases/artifacts/SuperBin-x86_64-unknown-linux-gnu.deb
+          asset_name: SuperBin-Linux-x64.deb
+          asset_content_type: application/octet-stream
