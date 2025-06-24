@@ -51,7 +51,15 @@ jobs:
 
       - name: Extract version from package.json
         id: get_version
-        run: echo "version=$(node -p 'require(\"./package.json\").version')" >> $GITHUB_OUTPUT
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            # Для Windows
+            FOR /F "tokens=*" %%a in ('node -p "require(\"./package.json\").version"') DO SET version=%%a
+            echo version=%version% >> %GITHUB_OUTPUT%
+          else
+            # Для Linux/macOS
+            echo "version=$(node -p 'require(\"./package.json\").version')" >> $GITHUB_OUTPUT
+          fi
 
       - name: Build and publish Tauri app
         uses: tauri-apps/tauri-action@v0
