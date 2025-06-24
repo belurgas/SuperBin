@@ -50,13 +50,13 @@ jobs:
         run: yarn install
 
       - name: Extract version from package.json (Linux/macOS)
-        id: get_version
+        id: get_version_linux_macos
         if: runner.os != 'Windows'
         run: |
           echo "version=$(node -p 'require(\"./package.json\").version')" >> $GITHUB_OUTPUT
       
       - name: Extract version from package.json (Windows)
-        id: get_version
+        id: get_version_windows
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
@@ -68,9 +68,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: app-v${{ steps.get_version.outputs.version }}
-          releaseName: "App v${{ steps.get_version.outputs.version }}"
+          tagName: app-v${{ steps.get_version_linux_macos.outputs.version || steps.get_version_windows.outputs.version }}
+          releaseName: "App v${{ steps.get_version_linux_macos.outputs.version || steps.get_version_windows.outputs.version }}"
           releaseBody: "See the assets to download this version and install."
           releaseDraft: true
           prerelease: false
-          args: ${{ matrix.args }}
+          args: "--target ${{ matrix.target }}"
