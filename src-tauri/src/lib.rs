@@ -79,8 +79,6 @@ fn tray_icon(app: &mut App) {
         }
     })
     .icon(app.default_window_icon().unwrap().clone()).build(app)?;
-
-    return tray;
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -105,7 +103,7 @@ pub fn run() {
         .setup(|app| {
             #[cfg(all(target_os = "windows", feature = "tray-icon"))]
             let tray = tray_icon(app);
-            
+
             let window = app.get_webview_window("main").unwrap();
             let _ = window.as_ref().window().move_window(Position::Center);
             tauri::async_runtime::spawn(async move {
