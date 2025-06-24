@@ -82,7 +82,7 @@ pub fn run() {
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&quit_i])?;
             
-            let tray = TrayIconBuilder::new()
+            let _tray = TrayIconBuilder::new()
             .menu(&menu)
             .show_menu_on_left_click(true)
             .on_menu_event(|app, event| match event.id.as_ref() {
