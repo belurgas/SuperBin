@@ -48,13 +48,17 @@ jobs:
       - name: Install frontend dependencies
         run: yarn install
 
+      - name: get-npm-version
+        id: package-version
+        uses: martinbeentjes/npm-get-version-action@v1.3.1
+
       - name: Build and publish Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: SuperBin-v__VERSION__
-          releaseName: "SuperBin v__VERSION__"
+          tagName: SuperBin-v${{ steps.package-version.outputs.version }}
+          releaseName: "SuperBin ${{ steps.package-version.outputs.version }}"
           releaseBody: "See the assets to download this version and install."
           releaseDraft: true
           prerelease: false
