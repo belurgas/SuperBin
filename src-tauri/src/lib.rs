@@ -103,7 +103,7 @@ pub fn run() {
         ])
         .setup(|app| {
             
-            let _tray = tray_icon(app).unwrap();
+            let tray = tray_icon(app).unwrap();
 
             let window = app.get_webview_window("main").unwrap();
             let _ = window.as_ref().window().move_window(Position::Center);
