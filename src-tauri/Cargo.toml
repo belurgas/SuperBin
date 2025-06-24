@@ -28,13 +28,13 @@ walkdir = "2"
 rayon = "1.10.0"
 features = "0.10.0"
 sysinfo = "0.35.2"
-systemstat = "0.2.4"
 tauri-plugin-log = "2"
-log = "*"
 tauri-plugin-os = "2"
+log = "0.4.27"
 
+[target.'cfg(target_os = "windows")'.dependencies]
 [dependencies.windows]
-version = "0.52"
+version = "0.61"
 features = [
     "Win32_Foundation",
     "Win32_System_Threading",
