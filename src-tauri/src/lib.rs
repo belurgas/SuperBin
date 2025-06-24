@@ -59,8 +59,8 @@ fn monitor_memory(tx: mpsc::Sender<u64>) {
     }
 }
 
-#[cfg(all(target_os = "windows", feature = "tray-icon"))]
-fn tray_icon(app: &mut App) {
+
+fn tray_icon(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     use tauri::tray::{TrayIcon, TrayIconBuilder};
 
     let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
@@ -79,6 +79,7 @@ fn tray_icon(app: &mut App) {
         }
     })
     .icon(app.default_window_icon().unwrap().clone()).build(app)?;
+    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -101,8 +102,8 @@ pub fn run() {
             system_info
         ])
         .setup(|app| {
-            #[cfg(all(target_os = "windows", feature = "tray-icon"))]
-            let tray = tray_icon(app);
+            
+            let tray = tray_icon(app).unwrap();
 
             let window = app.get_webview_window("main").unwrap();
             let _ = window.as_ref().window().move_window(Position::Center);
