@@ -1,14 +1,8 @@
-use std::{collections::HashMap, sync::mpsc, thread};
+use std::{sync::mpsc, thread};
 
-use sysinfo::{Components, Disks, MemoryRefreshKind, System};
+use sysinfo::{Components, Disks, System};
 use tauri::{menu::{Menu, MenuItem}, tray::TrayIconBuilder, Emitter, Manager};
 use tauri_plugin_positioner::{Position, WindowExt};
-
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
 
 // 1. Информация о дисках
 #[tauri::command]
