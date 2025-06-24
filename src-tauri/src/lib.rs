@@ -1,14 +1,8 @@
-use std::{collections::HashMap, sync::mpsc, thread};
+use std::{sync::mpsc, thread};
 
-use sysinfo::{Components, Disks, MemoryRefreshKind, System};
-use tauri::{Emitter, Manager};
+use sysinfo::{Components, Disks, System};
+use tauri::{menu::{Menu, MenuItem}, tray::TrayIconBuilder, Emitter, Manager};
 use tauri_plugin_positioner::{Position, WindowExt};
-
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
 
 // 1. Информация о дисках
 #[tauri::command]
@@ -27,18 +21,19 @@ fn get_disks_info() -> Vec<(String, String, u64, u64)> {
         .collect()
 }
 
-// 2. Информация о системе
 #[tauri::command]
-fn get_system_info() -> String {
-    let mut sys = System::new_all();
-    sys.refresh_all();
-
-    format!(
-        "CPU: {}\nRAM: {}/{} GB",
-        sys.cpus().first().map(|c| c.brand()).unwrap_or(""),
-        sys.used_memory() / 1_000_000,
-        sys.total_memory() / 1_000_000
-    )
+fn system_info() -> (String, u64, u64) {
+    let platform = tauri_plugin_os::platform();
+    let data: (String, u64, u64) = {
+        let mut sys = System::new_all();
+        sys.refresh_all();
+        (
+            platform.to_string(),
+            sys.total_memory(),
+            sys.used_memory(),
+        )
+    };
+    return data;
 }
 
 #[tauri::command]
@@ -74,14 +69,33 @@ pub fn run() {
     });
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_os::init())
+        .plugin(tauri_plugin_log::Builder::new().build())
         .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             get_disks_info,
-            get_system_info,
-            get_temperatures
+            get_temperatures,
+            system_info
         ])
         .setup(|app| {
+            let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&quit_i])?;
+            
+            let _tray = TrayIconBuilder::new()
+            .menu(&menu)
+            .show_menu_on_left_click(true)
+            .on_menu_event(|app, event| match event.id.as_ref() {
+                "quit" => {
+                println!("quit menu item was clicked");
+                app.exit(0);
+                }
+                _ => {
+                println!("menu item {:?} not handled", event.id);
+                }
+            })
+            .icon(app.default_window_icon().unwrap().clone()).build(app)?;
+
             let window = app.get_webview_window("main").unwrap();
             let _ = window.as_ref().window().move_window(Position::Center);
             tauri::async_runtime::spawn(async move {

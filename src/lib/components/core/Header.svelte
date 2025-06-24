@@ -37,7 +37,7 @@
           <p class="text-xs text-slate-400">Advanced System Utility</p>
         </div>
       </div>
-      <div class="flex items-center space-x-4">
+      <!-- <div class="flex items-center space-x-4">
         <button 
           on:click={startScan}
           class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors text-sm font-medium flex items-center"
@@ -53,7 +53,7 @@
             Quick Scan
           {/if}
         </button>
-      </div>
+      </div> -->
     </div>
   </div>
 </header>
