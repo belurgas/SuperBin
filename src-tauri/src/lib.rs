@@ -1,7 +1,7 @@
 use std::{sync::mpsc, thread};
 
 use sysinfo::{Components, Disks, System};
-use tauri::{menu::{Menu, MenuItem}, tray::TrayIconBuilder, Emitter, Manager};
+use tauri::{menu::{Menu, MenuItem}, App, Emitter, Manager};
 use tauri_plugin_positioner::{Position, WindowExt};
 
 // 1. Информация о дисках
@@ -59,6 +59,30 @@ fn monitor_memory(tx: mpsc::Sender<u64>) {
     }
 }
 
+#[cfg(all(target_os = "windows", feature = "tray-icon"))]
+fn tray_icon(app: &mut App) {
+    use tauri::tray::{TrayIcon, TrayIconBuilder};
+
+    let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&quit_i])?;
+
+    let tray = TrayIconBuilder::new()
+    .menu(&menu)
+    .show_menu_on_left_click(true)
+    .on_menu_event(|app, event| match event.id.as_ref() {
+        "quit" => {
+        println!("quit menu item was clicked");
+        app.exit(0);
+        }
+        _ => {
+        println!("menu item {:?} not handled", event.id);
+        }
+    })
+    .icon(app.default_window_icon().unwrap().clone()).build(app)?;
+
+    return tray;
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let (tx, rx) = mpsc::channel();
@@ -79,23 +103,9 @@ pub fn run() {
             system_info
         ])
         .setup(|app| {
-            let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&quit_i])?;
+            #[cfg(all(target_os = "windows", feature = "tray-icon"))]
+            let tray = tray_icon(app);
             
-            let _tray = TrayIconBuilder::new()
-            .menu(&menu)
-            .show_menu_on_left_click(true)
-            .on_menu_event(|app, event| match event.id.as_ref() {
-                "quit" => {
-                println!("quit menu item was clicked");
-                app.exit(0);
-                }
-                _ => {
-                println!("menu item {:?} not handled", event.id);
-                }
-            })
-            .icon(app.default_window_icon().unwrap().clone()).build(app)?;
-
             let window = app.get_webview_window("main").unwrap();
             let _ = window.as_ref().window().move_window(Position::Center);
             tauri::async_runtime::spawn(async move {
