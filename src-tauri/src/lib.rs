@@ -33,12 +33,14 @@ fn get_system_info() -> String {
     let mut sys = System::new_all();
     sys.refresh_all();
 
-    format!(
+    let data = format!(
         "CPU: {}\nRAM: {}/{} GB",
         sys.cpus().first().map(|c| c.brand()).unwrap_or(""),
         sys.used_memory() / 1_000_000,
         sys.total_memory() / 1_000_000
-    )
+    );
+    log::debug!("System Data: {}", data);
+    return data;
 }
 
 #[tauri::command]
