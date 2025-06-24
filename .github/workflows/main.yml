@@ -3,9 +3,8 @@ name: "publish"
 
 on:
   push:
-    branches:
-      - master
-      - dev
+    tags:
+    - 'SuperBin-v*'
 
 jobs:
   publish-tauri:
